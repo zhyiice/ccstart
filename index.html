@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f7fafc">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="查人校对">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>晚自习查人工具 · 校对启动</title>
+<style>
+  :root{
+    --ink:#1c2b3a; --sub:#6c8296; --line:#e6eef5; --tint:#f3f8fc; --tint2:#eefaf6;
+    --brand:#1e6aa8; --brand-ink:#164a75; --accent:#12a594;
+    --diff:#e8871e; --comm:#4a63b8; --free:#3fa15e;
+    --shadow:0 20px 44px -22px rgba(23,62,105,.34), 0 2px 8px rgba(23,62,105,.05);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; min-height:100vh; min-height:100dvh;
+    padding:max(14px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right))
+            calc(150px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
+    display:flex; flex-direction:column; align-items:center;
+    color:var(--ink);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  }
+  body::before{
+    content:''; position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background:
+      radial-gradient(760px 420px at 8% -12%, #e4f2ff 0%, rgba(228,242,255,0) 62%),
+      radial-gradient(700px 400px at 102% 2%, #e2faf2 0%, rgba(226,250,242,0) 58%),
+      radial-gradient(680px 460px at 50% 116%, #edf2ff 0%, rgba(237,242,255,0) 62%),
+      #f8fbfd;
+  }
+
+  /* ---------- 面板 ---------- */
+  .sheet{
+    --pad:clamp(15px,2.4vw,26px);
+    width:100%; max-width:560px; margin:auto 0;
+    background:#fff; border:1px solid rgba(255,255,255,.9); border-radius:22px;
+    box-shadow:var(--shadow);
+    display:grid; grid-template-columns:minmax(0,1fr); gap:clamp(12px,1.8vw,17px);
+    padding:var(--pad);
+  }
+  .head{grid-column:1/-1; margin-bottom:2px}
+  .pill{
+    display:inline-block; font-size:11px; letter-spacing:.7px; color:var(--brand);
+    background:#e8f3fd; border:1px solid #d3e8fa; padding:3px 10px; border-radius:999px;
+  }
+  .head h1{margin:9px 0 4px; font-size:clamp(19px,4.6vw,23px); font-weight:650; letter-spacing:.2px; color:var(--brand-ink)}
+  .head p{margin:0; font-size:clamp(12.5px,3vw,13.5px); color:var(--sub)}
+  .col-a,.col-b{min-width:0; display:flex; flex-direction:column; gap:clamp(12px,1.8vw,17px)}
+
+  /* ---------- 时钟 ---------- */
+  .clock{
+    text-align:center; padding:clamp(14px,3.4vw,20px) clamp(12px,3vw,18px);
+    border-radius:16px; border:1px solid #dceaf6; background:linear-gradient(165deg,#f4faff 0%,#eefaf6 100%);
+  }
+  .clock .lbl{font-size:12px; color:var(--sub); letter-spacing:.4px}
+  .clock .date{margin-top:6px; font-size:clamp(15px,3.9vw,17px); font-weight:600; color:#25415c}
+  .clock .time{
+    font-size:clamp(38px,12.5vw,54px); font-weight:700; line-height:1.1; letter-spacing:.5px;
+    color:var(--brand); font-variant-numeric:tabular-nums; font-feature-settings:"tnum";
+  }
+  .clock .meta{margin-top:4px; font-size:11.5px; color:var(--sub)}
+  .clock .warnline{margin-top:7px; font-size:11.5px; color:#8a6a2a}
+
+  /* ---------- 版本校对 ---------- */
+  .check{
+    display:flex; gap:9px; align-items:flex-start; font-size:12.5px; color:#3a4d61;
+    background:var(--tint); border:1px solid var(--line); border-radius:14px; padding:10px 12px;
+    transition:background .25s, border-color .25s;
+  }
+  .check .dot{flex:0 0 auto; width:9px; height:9px; margin-top:6px; border-radius:50%; background:#c2cbdb}
+  .check .t{font-weight:600; color:var(--brand-ink)}
+  .check .times{font-variant-numeric:tabular-nums}
+  .check .hint{color:var(--sub); font-size:11.5px}
+  .check.is-fresh{background:var(--tint2); border-color:#cdeee2}
+  .check.is-fresh .dot{background:var(--free); box-shadow:0 0 0 3px rgba(63,161,94,.16)}
+  .check.is-old{background:#fff9ef; border-color:#f6e2c4}
+  .check.is-old .dot{background:var(--diff); box-shadow:0 0 0 3px rgba(232,135,30,.16)}
+  .check.is-bad{background:#fdf3f2; border-color:#f4d9d5}
+  .check.is-bad .dot{background:#c0392b}
+
+  /* ---------- 操作条：手机上吸底固定 ---------- */
+  .foot{
+    position:fixed; left:0; right:0; bottom:0; z-index:20; margin:0; padding:0;
+    background:rgba(255,255,255,.95);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    border-top:1px solid var(--line);
+    box-shadow:0 -8px 22px -16px rgba(23,62,105,.45);
+  }
+  .foot-inner{
+    max-width:560px; margin:0 auto;
+    padding:10px max(12px,env(safe-area-inset-right)) calc(11px + env(safe-area-inset-bottom))
+            max(12px,env(safe-area-inset-left));
+  }
+  .kbd{display:none}
+  button{font:inherit; cursor:pointer; border-radius:13px; border:0}
+  .primary{
+    display:block; width:100%; padding:15px 16px; font-size:clamp(16px,4.2vw,17px);
+    font-weight:650; letter-spacing:.6px; color:#fff;
+    background:linear-gradient(135deg,#2f8fd8 0%,#14b3a2 100%);
+    box-shadow:0 12px 24px -12px rgba(20,140,180,.72);
+    transition:transform .08s ease, box-shadow .2s ease, filter .2s ease;
+  }
+  .primary:hover{filter:brightness(1.04)}
+  .primary:active{transform:translateY(1px) scale(.996); box-shadow:0 6px 14px -10px rgba(20,140,180,.8)}
+  .primary[disabled]{opacity:.72; box-shadow:none; cursor:default}
+  .alt{display:flex; flex-wrap:wrap; gap:7px 8px; align-items:center; margin-top:9px}
+  .ghost{
+    background:#f4f8fc; border:1px solid var(--line); color:#41586d;
+    font-size:12.5px; padding:8px 11px; min-height:34px;
+  }
+  .ghost:hover{background:#eaf3fa}
+  .ghost:active{background:#e2eefa}
+  .link{font-size:12.5px; color:var(--sub); text-decoration:underline; background:none; padding:9px 3px}
+  :focus-visible{outline:2px solid #6cb6e8; outline-offset:2px}
+
+  /* ---------- 说明区块 ---------- */
+  .block{
+    background:#fff; border:1px solid var(--line); border-radius:16px;
+    padding:clamp(12px,2.6vw,15px) clamp(12px,3vw,16px);
+  }
+  .block h2{
+    display:flex; align-items:center; gap:7px;
+    margin:0 0 9px; font-size:13px; font-weight:650; color:var(--brand-ink); letter-spacing:.3px;
+  }
+  .block h2::before{content:''; width:4px; height:14px; border-radius:2px; background:linear-gradient(180deg,#2f8fd8,#14b3a2)}
+  ol.steps,ul.tips{margin:0; padding:0; list-style:none; counter-reset:s}
+  ol.steps li{position:relative; padding:0 0 8px 27px; font-size:13px; color:#3d5165}
+  ol.steps li:last-child{padding-bottom:0}
+  ol.steps li::before{
+    counter-increment:s; content:counter(s);
+    position:absolute; left:0; top:2px; width:18px; height:18px; border-radius:50%;
+    background:#e8f3fd; color:var(--brand); font-size:11px; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+  }
+  ul.tips li{position:relative; padding:0 0 8px 16px; font-size:12.5px; color:#3d5165}
+  ul.tips li:last-child{padding-bottom:0}
+  ul.tips li::before{content:''; position:absolute; left:2px; top:8px; width:5px; height:5px; border-radius:50%; background:#b9d5e8}
+  ul.tips b{color:var(--brand-ink)}
+  .tag{
+    display:inline-block; padding:1px 7px; border-radius:6px; font-size:11.5px; font-weight:600;
+    color:#fff; vertical-align:1px;
+  }
+  .tag.diff{background:var(--diff)} .tag.comm{background:var(--comm)} .tag.free{background:var(--free)}
+  .muted{color:var(--sub); font-size:11.5px; margin:9px 0 0}
+
+  /* ---------- 网址与设置 ---------- */
+  .url{
+    font-size:11.5px; color:var(--sub); background:var(--tint); border:1px dashed #d6e5f2;
+    border-radius:11px; padding:9px 11px; word-break:break-all;
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+  }
+  .url b{color:var(--brand-ink); font-family:inherit; font-weight:600}
+  details{border-top:1px solid var(--line); margin-top:11px; padding-top:9px}
+  summary{font-size:12.5px; color:var(--brand); cursor:pointer; list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:' ▾'; color:#9db4c6}
+  details[open] summary::after{content:' ▴'}
+  details .inner{padding:9px 0 1px; font-size:12.5px; color:#4a5f73}
+  details .inner p{margin:0 0 8px}
+  .row{display:flex; flex-wrap:wrap; gap:7px; margin-top:8px}
+  input[type=url]{
+    flex:1 1 210px; min-width:0; font:inherit; font-size:16px; padding:10px 12px; border-radius:11px;
+    border:1px solid var(--line); background:#fff; color:var(--ink); outline:none;
+  }
+  input[type=url]:focus{border-color:#9ecdea; box-shadow:0 0 0 3px rgba(47,143,216,.14)}
+  .status{font-size:12px; min-height:17px; margin:0 0 7px; color:var(--sub); text-align:center}
+  .status.ok{color:#1c7d4d} .status.warn{color:#8a6a2a} .status.err{color:#b03a2e}
+
+  /* ---------- 大屏：两栏 ---------- */
+  @media (min-width:900px){
+    .sheet{
+      max-width:1040px; border-radius:24px;
+      grid-template-columns:minmax(320px,392px) minmax(0,1fr);
+      gap:22px 26px; padding:clamp(20px,2.2vw,28px);
+      --pad:clamp(20px,2.2vw,28px);
+    }
+    .head{grid-column:1/-1}
+    .col-a{grid-column:1; grid-row:2}
+    .col-b{grid-column:2; grid-row:2}
+    /* 电脑端：操作条回到左栏流内，不再吸底 */
+    body{padding-bottom:max(14px,env(safe-area-inset-bottom))}
+    .foot{
+      position:static; left:auto; right:auto; bottom:auto; z-index:auto;
+      background:none; backdrop-filter:none; -webkit-backdrop-filter:none;
+      border-top:0; box-shadow:none; margin-top:4px;
+    }
+    .foot-inner{max-width:none; margin:0; padding:0}
+    .kbd{display:inline; margin-left:auto; font-size:11.5px; color:#8fa4b6}
+    .clock .time{font-size:56px}
+    .alt{margin-top:11px}
+  }
+  @media (min-width:1240px){
+    .sheet{max-width:1120px; grid-template-columns:minmax(360px,420px) minmax(0,1fr)}
+    .clock .time{font-size:60px}
+  }
+  /* 手机横屏/矮屏：操作条改成一行，省纵向空间（只作用于手机宽度） */
+  @media (max-height:560px) and (orientation:landscape) and (max-width:899px){
+    body{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
+    .sheet{gap:10px; --pad:14px; margin:0 auto}
+    .foot{padding:0}
+    .foot-inner{display:flex; align-items:center; gap:10px; padding-top:8px;
+                padding-bottom:calc(9px + env(safe-area-inset-bottom))}
+    .foot-inner .status{order:0; flex:1 1 auto; margin:0; min-height:0; text-align:left;
+                        overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+    .foot-inner .alt{order:1; margin:0; flex:0 0 auto; flex-wrap:nowrap}
+    .foot-inner .kbd{display:none}
+    .primary{order:2; width:auto; flex:0 0 auto; padding:12px 22px; font-size:15px}
+    .clock{padding:10px}
+    .clock .time{font-size:clamp(30px,7vh,40px)}
+    .clock .date{font-size:14px; margin-top:3px}
+    .clock .warnline{display:none}
+  }
+  @media (max-width:359px){
+    body{padding-left:9px; padding-right:9px}
+    .head h1{font-size:18px}
+    .alt{gap:6px}
+    .ghost{padding:8px 10px}
+  }
+</style>
+</head>
+<body>
+<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ttl">
+
+  <div class="head">
+    <span class="pill">校对启动页</span>
+    <h1 id="ttl">晚自习查人工具</h1>
+    <p>用当前时间换一个全新网址，绕开手机缓存，打开的一定是最新版</p>
+  </div>
+
+  <div class="col-a">
+    <div class="clock">
+      <div class="lbl">本机当前系统时间</div>
+      <div class="date" id="dateText">—</div>
+      <div class="time" id="timeText">--:--:--</div>
+      <div class="meta" id="metaText">—</div>
+      <div class="warnline">时间不准请先校准手机时间</div>
+    </div>
+
+    <div class="check" id="verBox">
+      <span class="dot"></span>
+      <div id="verBody">
+        <span class="t">版本校对</span><br>
+        <span class="times" id="verText">正在查询…</span><br>
+        <span class="hint" id="verHint"></span>
+      </div>
+    </div>
+
+    <div class="url" id="urlPreview">即将打开：—</div>
+
+    <div class="foot">
+      <div class="foot-inner">
+        <p class="status" id="status">准备就绪</p>
+        <button class="primary" id="goBtn" type="button">校对并显示</button>
+        <div class="alt">
+          <button class="ghost" id="hardBtn" type="button">无缓存强制刷新</button>
+          <button class="link" id="plainBtn" type="button">直接打开</button>
+          <span class="kbd" id="kbdHint">电脑上按 Enter 也可</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-b">
+    <div class="block">
+      <h2>本页怎么用</h2>
+      <ol class="steps">
+        <li>确认上面的时间是当前时间（手机时间不准就先校准）。</li>
+        <li>点 <b>校对并显示</b>，进入查人工具的最新版。</li>
+        <li>以后每次都从本页进入：把<b>本页</b>添加到手机主屏幕，别把工具页本身加进去。</li>
+      </ol>
+      <details>
+        <summary>为什么会这样（缓存原理与一个限制）</summary>
+        <div class="inner">
+          <p>GitHub Pages 给网页设了 10 分钟缓存，手机浏览器（尤其 iPhone 主屏幕图标）会直接拿旧副本，所以你更新了也看不到。本页把当前时间拼进网址（如 <code>?t=20261014142858</code>），浏览器对不上缓存，只能去服务器取一次。</p>
+          <p>老实说一句：GitHub 的 CDN 只按<b>路径</b>缓存、忽略问号后的参数，所以刚推送后约 1～10 分钟内，服务器那边仍可能发旧副本。上面的「版本校对」会告诉你 GitHub 最新一次提交是多久以前。</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="block">
+      <h2>查人工具怎么用</h2>
+      <ul class="tips">
+        <li>打开后顶部先选 <b>周次 / 星期 / 节次</b>，默认已按当前时间自动定位；右边可直接<b>搜索姓名</b>。</li>
+        <li><b>逐人核对</b>：一人一张卡片。橙色 <span class="tag diff">个人差异课</span> 指只有部分人有课，蓝色 <span class="tag comm">全班共同课</span> 指全班都上，绿色 <span class="tag free">应到自习</span> 指该来上晚自习。</li>
+        <li>卡片上方的小字给出统计（如「应到自习 N 人」）；<b>上课人员筛选</b> 可按课程名只看某些人。</li>
+        <li><b>本周无固定节次的课</b> 点开看军训、劳动教育、尔雅网课这类不按固定周次节次排的课。</li>
+        <li><b>网格总览</b>：行 = 姓名（按学号排序），列 = 星期，整周情况一眼看完。</li>
+        <li>右上角可 <b>切手机版 / 切电脑版</b>，也能直接 <b>打印</b> 纸质核对表。</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <h2>目标网址与记录</h2>
+      <div class="row">
+        <input type="url" id="targetInput" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://zhyiice.github.io/classcheck/" aria-label="目标网址">
+        <button class="ghost" id="saveTarget" type="button">保存</button>
+        <button class="ghost" id="resetTarget" type="button">恢复默认</button>
+      </div>
+      <div class="row">
+        <button class="ghost" id="clearLast" type="button">清除本页记录</button>
+      </div>
+      <p class="muted" id="lastText">上次校对：暂无记录</p>
+      <details>
+        <summary>更多说明</summary>
+        <div class="inner">
+          <p>目标网址保存在本机浏览器（localStorage），换域名时在这里改，不用改代码。</p>
+          <p>时间戳每次点按钮都会重新生成，所以同一分钟内连点两次也是同一个新网址，不会重复下载。</p>
+          <p>「无缓存强制刷新」用 fetch(no-store) 直接抓最新 HTML 原地替换显示，是时间戳方式失效时的兜底。</p>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <noscript>
+    <div class="block">本页需要 JavaScript 才能生成校对时间戳。请直接访问
+      https://zhyiice.github.io/classcheck/ 并在网址后加个随机参数，如 ?t=1</div>
+  </noscript>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var DEFAULT_TARGET = 'https://zhyiice.github.io/classcheck/';
+  var WEEK = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  var PAD = function (n) { return String(n).padStart(2, '0'); };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var el = {
+    dateText: $('dateText'), timeText: $('timeText'), metaText: $('metaText'),
+    urlPreview: $('urlPreview'), status: $('status'), lastText: $('lastText'),
+    goBtn: $('goBtn'), hardBtn: $('hardBtn'), plainBtn: $('plainBtn'),
+    targetInput: $('targetInput'), saveTarget: $('saveTarget'), resetTarget: $('resetTarget'),
+    clearLast: $('clearLast'), verBox: $('verBox'), verText: $('verText'), verHint: $('verHint'),
+    kbdHint: $('kbdHint')
+  };
+
+  /* ---------- 本地存储（失败也不影响使用） ---------- */
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+  function normalize(u) {
+    u = String(u || '').trim();
+    if (!u) { return DEFAULT_TARGET; }
+    if (!/^https?:\/\//i.test(u)) { u = 'https://' + u; }
+    return u;
+  }
+  var target = normalize(lsGet('gate.target') || DEFAULT_TARGET);
+
+  /* ---------- 时间戳与目标网址 ---------- */
+  function stamp(d) {
+    return d.getFullYear() + PAD(d.getMonth() + 1) + PAD(d.getDate()) +
+           PAD(d.getHours()) + PAD(d.getMinutes()) + PAD(d.getSeconds());
+  }
+  function buildUrl(d) {
+    d = d || new Date();
+    var u;
+    try { u = new URL(target); } catch (e) { u = new URL(DEFAULT_TARGET); }
+    u.searchParams.set('t', stamp(d));   // 关键：让浏览器缓存无法命中
+    return u.toString();
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  /* ---------- 时钟 ---------- */
+  function tzText(d) {
+    var zone = '';
+    try { zone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+    var offMin = -d.getTimezoneOffset();
+    var sign = offMin < 0 ? '-' : '+';
+    var abs = Math.abs(offMin);
+    var gmt = 'UTC' + sign + PAD(Math.floor(abs / 60)) + ':' + PAD(abs % 60);
+    return zone ? (zone + ' · ' + gmt) : gmt;
+  }
+  function render() {
+    var d = new Date();
+    el.dateText.textContent = d.getFullYear() + ' 年 ' + (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日  ' + WEEK[d.getDay()];
+    el.timeText.textContent = PAD(d.getHours()) + ':' + PAD(d.getMinutes()) + ':' + PAD(d.getSeconds());
+    el.metaText.textContent = tzText(d);
+    el.urlPreview.innerHTML = '即将打开：<b>' + escapeHtml(buildUrl(d)) + '</b>';
+  }
+  render();
+  setInterval(render, 1000);
+
+  function say(msg, kind) {
+    el.status.textContent = msg;
+    el.status.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  /* ---------- 上次记录 ---------- */
+  function fmt(ts) {
+    var d = new Date(ts);
+    return d.getFullYear() + '-' + PAD(d.getMonth() + 1) + '-' + PAD(d.getDate()) + ' ' +
+           PAD(d.getHours()) + ':' + PAD(d.getMinutes()) + ':' + PAD(d.getSeconds());
+  }
+  function showLast() {
+    var t = lsGet('gate.last');
+    el.lastText.textContent = t ? ('上次校对：' + fmt(Number(t))) : '上次校对：暂无记录';
+  }
+  showLast();
+
+  /* ---------- GitHub 最新提交校对 ---------- */
+  var GH_CACHE_MS = 60 * 1000;
+
+  function ghRepo(u) {
+    try {
+      var url = new URL(u);
+      if (!/(^|\.)github\.io$/i.test(url.hostname)) { return null; }
+      var owner = url.hostname.replace(/\.github\.io$/i, '');
+      var seg = url.pathname.split('/').filter(Boolean);
+      var repo = seg.length ? seg[0] : owner + '.github.io';
+      if (!owner || !repo) { return null; }
+      return { owner: owner, repo: repo, full: owner + '/' + repo };
+    } catch (e) { return null; }
+  }
+  function fmtLocal(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) { return String(iso); }
+    return d.getFullYear() + '-' + PAD(d.getMonth() + 1) + '-' + PAD(d.getDate()) + ' ' +
+           PAD(d.getHours()) + ':' + PAD(d.getMinutes());
+  }
+  function agoText(ms) {
+    var m = Math.round(ms / 60000);
+    if (m < 1) { return '刚刚'; }
+    if (m < 60) { return m + ' 分钟前'; }
+    var h = Math.floor(m / 60);
+    if (h < 24) { return h + ' 小时前'; }
+    return Math.floor(h / 24) + ' 天前';
+  }
+  function setCheck(cls, text, hint) {
+    el.verBox.className = 'check' + (cls ? ' ' + cls : '');
+    el.verText.textContent = text;
+    el.verHint.textContent = hint || '';
+  }
+  function showVersion(iso) {
+    var age = Date.now() - new Date(iso).getTime();
+    var when = fmtLocal(iso) + '（' + agoText(age) + '）';
+    if (age < 11 * 60 * 1000) {
+      setCheck('is-old', 'GitHub 最新提交：' + when,
+        '刚推送不久：Pages 构建还要几十秒，CDN 也可能还在发旧副本。若打开后看到旧内容，过几分钟再点一次。');
+    } else {
+      setCheck('is-fresh', 'GitHub 最新提交：' + when,
+        '已超过 10 分钟，CDN 缓存应该已过期，点「校对并显示」拿到的就是这一版。');
+    }
+  }
+  function checkVersion() {
+    var repo = ghRepo(target);
+    if (!repo) {
+      setCheck('', '当前目标不是 GitHub Pages 站点，已跳过版本校对', '');
+      return;
+    }
+    var cached = lsGet('gate.gh');
+    if (cached) {
+      try {
+        var c = JSON.parse(cached);
+        if (c && c.repo === repo.full && Date.now() - c.at < GH_CACHE_MS) { showVersion(c.date); return; }
+      } catch (e) {}
+    }
+    setCheck('', '正在查询 GitHub 上的最新提交…', '');
+    fetch('https://api.github.com/repos/' + repo.full + '/commits?per_page=1&path=index.html',
+          { cache: 'no-store', headers: { Accept: 'application/vnd.github+json' } })
+      .then(function (res) {
+        if (res.status === 403 || res.status === 429) { throw new Error('查询太频繁，稍后再试'); }
+        if (res.status === 404) { throw new Error('仓库不可见或文件名不是 index.html'); }
+        if (!res.ok) { throw new Error('HTTP ' + res.status); }
+        return res.json();
+      })
+      .then(function (arr) {
+        if (!arr || !arr.length) { throw new Error('没有提交记录'); }
+        var meta = (arr[0].commit && (arr[0].commit.committer || arr[0].commit.author)) || {};
+        if (!meta.date) { throw new Error('返回数据缺少时间'); }
+        lsSet('gate.gh', JSON.stringify({ repo: repo.full, at: Date.now(), date: meta.date }));
+        showVersion(meta.date);
+      })
+      .catch(function (err) {
+        setCheck('is-bad', '版本校对不可用：' + err.message, '不影响使用，直接点下面的按钮就行。');
+      });
+  }
+  checkVersion();
+
+  /* ---------- 主动作：带时间戳跳转 ---------- */
+  function openFresh() {
+    var d = new Date();
+    var url = buildUrl(d);
+    lsSet('gate.last', String(d.getTime()));
+    showLast();
+    el.goBtn.disabled = true;
+    el.goBtn.textContent = '正在打开最新版…';
+    say('已生成校对时间戳 ' + stamp(d) + '，正在跳转…', 'ok');
+    location.href = url;
+    setTimeout(function () {   // 跳转被拦下时恢复按钮，便于再点一次
+      el.goBtn.disabled = false;
+      el.goBtn.textContent = '校对并显示';
+    }, 2500);
+  }
+
+  /* ---------- 备用：无缓存抓取后原地替换 ---------- */
+  function hardRefresh() {
+    var url = buildUrl(new Date());
+    el.hardBtn.disabled = true;
+    say('正在绕过缓存抓取最新版本…');
+    fetch(url, { cache: 'no-store', redirect: 'follow' })
+      .then(function (res) {
+        if (!res.ok) { throw new Error('HTTP ' + res.status); }
+        return res.text();
+      })
+      .then(function (html) {
+        if (!/<\/html>/i.test(html)) { throw new Error('返回内容不完整'); }
+        lsSet('gate.last', String(Date.now()));
+        say('抓取成功，正在显示最新版本…', 'ok');
+        document.open(); document.write(html); document.close();
+      })
+      .catch(function (err) {
+        say('无缓存抓取失败（' + err.message + '），改为带时间戳跳转…', 'warn');
+        setTimeout(function () { location.href = url; }, 900);
+      })
+      .then(function () { el.hardBtn.disabled = false; });
+  }
+
+  /* ---------- 事件绑定 ---------- */
+  el.goBtn.addEventListener('click', openFresh);
+  el.hardBtn.addEventListener('click', hardRefresh);
+  el.plainBtn.addEventListener('click', function () {
+    say('未加时间戳直接打开，可能仍是手机里的旧版本', 'warn');
+    location.href = target;
+  });
+
+  el.targetInput.value = target;
+  el.saveTarget.addEventListener('click', function () {
+    target = normalize(el.targetInput.value);
+    el.targetInput.value = target;
+    lsSet('gate.target', target);
+    lsDel('gate.gh');
+    render(); checkVersion();
+    say('目标网址已保存：' + target, 'ok');
+  });
+  el.resetTarget.addEventListener('click', function () {
+    target = DEFAULT_TARGET;
+    el.targetInput.value = target;
+    lsDel('gate.target'); lsDel('gate.gh');
+    render(); checkVersion();
+    say('已恢复默认目标网址', 'ok');
+  });
+  el.clearLast.addEventListener('click', function () {
+    lsDel('gate.last'); lsDel('gate.gh');
+    showLast(); checkVersion();
+    say('记录已清除');
+  });
+
+  // 电脑端：直接按 Enter 也可以（在输入框里按 Enter 不触发）
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || e.metaKey || e.ctrlKey || e.altKey) { return; }
+    var t = e.target || {};
+    if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'BUTTON') { return; }
+    e.preventDefault();
+    openFresh();
+  });
+
+  // 从工具页返回本页时刷新预览与版本状态
+  window.addEventListener('pageshow', function (e) {
+    if (e.persisted) { render(); checkVersion(); say('已回到校对页，可再次校对', 'ok'); }
+  });
+  window.addEventListener('visibilitychange', function () {
+    if (!document.hidden) { render(); checkVersion(); }
+  });
+})();
+</script>
+</body>
+</html>

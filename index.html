@@ -233,7 +233,7 @@
   <div class="head">
     <span class="pill">校对启动页</span>
     <h1 id="ttl">晚自习查人工具</h1>
-    <p>用当前时间换一个全新网址，绕开手机缓存，打开的一定是最新版</p>
+    <p>校对当前时间，获取新网址，绕缓存</p>
   </div>
 
   <div class="col-a">
@@ -242,7 +242,7 @@
       <div class="date" id="dateText">—</div>
       <div class="time" id="timeText">--:--:--</div>
       <div class="meta" id="metaText">—</div>
-      <div class="warnline">时间不准请先校准手机时间</div>
+      <div class="warnline">若时间不准请校准手机时间</div>
     </div>
 
     <div class="check" id="verBox">
@@ -289,12 +289,12 @@
     <div class="block">
       <h2>查人工具怎么用</h2>
       <ul class="tips">
-        <li>打开后顶部先选 <b>周次 / 星期 / 节次</b>，默认已按当前时间自动定位；右边可直接<b>搜索姓名</b>。</li>
+        <li>打开后自动显示当前 <b>周次 / 星期 / 节次</b>，右边可直接<b>搜索姓名</b>。</li>
         <li><b>逐人核对</b>：一人一张卡片。橙色 <span class="tag diff">个人差异课</span> 指只有部分人有课，蓝色 <span class="tag comm">全班共同课</span> 指全班都上，绿色 <span class="tag free">应到自习</span> 指该来上晚自习。</li>
         <li>卡片上方的小字给出统计（如「应到自习 N 人」）；<b>上课人员筛选</b> 可按课程名只看某些人。</li>
-        <li><b>本周无固定节次的课</b> 点开看军训、劳动教育、尔雅网课这类不按固定周次节次排的课。</li>
-        <li><b>网格总览</b>：行 = 姓名（按学号排序），列 = 星期，整周情况一眼看完。</li>
-        <li>右上角可 <b>切手机版 / 切电脑版</b>，也能直接 <b>打印</b> 纸质核对表。</li>
+        <li><b>本周无固定节次的课</b> AI做的，用不到。</li>
+        <li><b>网格总览</b>：行 = 这个一般也用不到。</li>
+        <li>右上角可 <b>切手机版 / 切电脑版（点开后切换，这个有点用）</b>，也能直接 <b>打印</b> 纸质核对表。</li>
       </ul>
     </div>
 
@@ -453,7 +453,7 @@
         '刚推送不久：Pages 构建还要几十秒，CDN 也可能还在发旧副本。若打开后看到旧内容，过几分钟再点一次。');
     } else {
       setCheck('is-fresh', 'GitHub 最新提交：' + when,
-        '已超过 10 分钟，CDN 缓存应该已过期，点「校对并显示」拿到的就是这一版。');
+        '已校对最后一次发布时间，CDN 缓存应该已过期，点「校对并显示」展示新版。');
     }
   }
   function checkVersion() {
